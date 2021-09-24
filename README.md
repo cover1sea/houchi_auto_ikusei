@@ -10,7 +10,7 @@
 # 動作確認環境
 Windows 10  
 Python 3  
-NoxPlayer 7
+NoxPlayer 7  
 Amazon版 放置少女アプリ
 
 # 初期設定

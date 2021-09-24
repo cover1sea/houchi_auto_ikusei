@@ -35,7 +35,7 @@ tapxy=[
 def tap(n):
     subprocess.call("nox_adb shell input touchscreen tap %d %d" % (tapxy[n][0], tapxy[n][1]), \
         shell=True, cwd=nox_dir)
-    time.sleep(1)
+    time.sleep(0.5)
 
 def getStatus():
     subprocess.call("nox_adb exec-out screencap -p > screen_1.png", shell=True, cwd=ss_dir)
@@ -51,43 +51,37 @@ def getStatus():
 def calcStatus(a,b,c,d):
     preParam = tool.image_to_string(
         Image.open(pre_ss),
-        lang='eng',
-        builder=pyocr.builders.DigitBuilder()
+        lang="eng",
+        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
     ).split()
     param = tool.image_to_string(
         Image.open(ss),
-        lang='eng',
-        builder=pyocr.builders.DigitBuilder()
+        lang="eng",
+        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
     ).split()
 
-    while (len(param) != 4):
-        time.sleep(0.3)
-        print("get status again...")
-        getStatus()
-        param = tool.image_to_string(
-            Image.open(ss),
-            lang='eng',
-            builder=pyocr.builders.DigitBuilder()
-        ).split()
+    if(len(param) != 4 | len(preParam) != 4):
+        print("Cannot get status...")
+        sys.exit()
 
-    print(preParam)
-    print(param)
+    print("筋力(%.2f)：%d\n敏捷(%.2f)：%d\n知力(%.2f)：%d\n体力(%.2f)：%d" %(a,int(param[0]) - int(preParam[0]),
+                b, int(param[1]) - int(preParam[1]),
+                c, int(param[2]) - int(preParam[2]),
+                d, int(param[3]) - int(preParam[3])))
 
-    total = (int(param[0]) - int(preParam[0])) * a \
+    calc = (int(param[0]) - int(preParam[0])) * a \
                 + (int(param[1]) - int(preParam[1])) * b \
                 + (int(param[2]) - int(preParam[2])) * c \
                 + (int(param[3]) - int(preParam[3])) * d \
 
-    print(total)
-    if (total > 0):
-        print(total)
+    print("Calculation Res: %.2f" %calc)
+    if (calc > 0):
         print("Accept")
         tap(1)
 
-        time.sleep(3)
+        time.sleep(2.5)
 
     else:
-        print(total)
         print("Cancel")
         tap(0)
 
@@ -97,8 +91,8 @@ def main(args):
     getStatus()
     param_zero = tool.image_to_string(
         Image.open(pre_ss),
-        lang='eng',
-        builder=pyocr.builders.DigitBuilder()
+        lang="eng",
+        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
     ).split()
 
     for i in range(int(args[6])):
@@ -111,19 +105,19 @@ def main(args):
         getStatus()
 
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
-        print("-----")
+        print("-----\n")
     print("---script end---")
     getStatus()
     param_end = tool.image_to_string(
         Image.open(pre_ss),
-        lang='eng',
-        builder=pyocr.builders.DigitBuilder()
+        lang="eng",
+        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
     ).split()
 
     print("result:")
-    print("筋力：%d、敏捷：%d、知力：%d、体力：%d" %(int(param_end[0]) - int(param_zero[0]),
-                                                  int(param_end[1]) - int(param_zero[1]),
-                                                  int(param_end[2]) - int(param_zero[2]),
-                                                  int(param_end[3]) - int(param_zero[3])))
+    print("筋力：{:+}、敏捷：{:+}、知力：{:+}、体力：{:+}". format(int(param_end[0]) - int(param_zero[0]),
+                                                                int(param_end[1]) - int(param_zero[1]),
+                                                                int(param_end[2]) - int(param_zero[2]),
+                                                                int(param_end[3]) - int(param_zero[3])))
 
 main(sys.argv)

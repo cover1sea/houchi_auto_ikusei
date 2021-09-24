@@ -102,7 +102,7 @@ def main(args):
     ).split()
 
     for i in range(int(args[6])):
-        print("---------------------------")
+        print("%d/%d" %(i+1,int(args[6])))
 
         if(args[1] == 'c'):
                 tap(0)
@@ -111,7 +111,7 @@ def main(args):
         getStatus()
 
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
-    
+        print("-----")
     print("---script end---")
     getStatus()
     param_end = tool.image_to_string(

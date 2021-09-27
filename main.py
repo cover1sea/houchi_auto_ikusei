@@ -12,19 +12,31 @@ from PIL import Image
 #nox_adbのディレクトリ
 nox_dir = r"F:\\Nox\bin"
 ss_dir = r"%s\tmp" %(os.getcwd())
-pre_ss = r"%s\pre_status.png" %(ss_dir)
-ss = r"%s\status.png" %(ss_dir)
+pre_ss = r"%s\pre_status" %(ss_dir)
+ss = r"%s\status" %(ss_dir)
 #tesseract(ocr)のディレクトリ
 pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 tool = pyocr.get_available_tools()[0]
 
 preStatusxy = [
-        380, 500,        #y1, y2
-        130, 194       #x1, x2
+        [380, 405,        #y1, y2
+        130, 193],        #x1, x2
+        [405, 435,
+        130, 193],
+        [435, 465,
+        130, 193],
+        [465, 495,
+        130, 193]
 ] 
 statusxy = [
-        380,500,
-        360, 417
+        [380, 405,        #y1, y2
+        345, 416],        #x1, x2
+        [405, 435,
+        345, 416],
+        [435, 465,
+        345, 416],
+        [465, 495,
+        345, 416]
 ]
 
 tapxy=[
@@ -40,39 +52,74 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb exec-out screencap -p > screen_1.png", shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    cv2.imwrite(pre_ss, 
-                img[preStatusxy[0]:preStatusxy[1], preStatusxy[2]:preStatusxy[3]])
-    cv2.imwrite(ss, 
-                img[statusxy[0]:statusxy[1], statusxy[2]:statusxy[3]])
+    ret, img_gray = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 150, 255, cv2.THRESH_BINARY)
+    #ret, img_gray = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
+    for i in range(4):
+        cv2.imwrite(pre_ss+str(i)+".png", 
+                    img_gray[preStatusxy[i][0]:preStatusxy[i][1], preStatusxy[i][2]:preStatusxy[i][3]])
+        cv2.imwrite(ss+str(i)+".png", 
+                    img_gray[statusxy[i][0]:statusxy[i][1], statusxy[i][2]:statusxy[i][3]])
 
-    # time.sleep(1)
+    #time.sleep(1)
 
 
 def calcStatus(a,b,c,d):
-    preParam = tool.image_to_string(
-        Image.open(pre_ss),
-        lang="eng",
-        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
-    ).split()
-    param = tool.image_to_string(
-        Image.open(ss),
-        lang="eng",
-        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
-    ).split()
+    preParam = list()
+    param = list()
+    for i in range(4):
+        preParam.append(
+            tool.image_to_string(
+                Image.open(pre_ss+str(i)+".png"),
+                lang="eng",
+                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+            ).replace(".", "")
+        )
+        param.append(
+            tool.image_to_string(
+            Image.open(ss+str(i)+".png"),
+            lang="eng",
+            builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+            ).replace(".", "")
+        )
 
-    if(len(param) != 4 | len(preParam) != 4):
-        print("Cannot get status...")
-        sys.exit()
-
+    #print(preParam)
+    #print(param)
+    calc = (float(param[0]) - float(preParam[0])) * a \
+                + (float(param[1]) - float(preParam[1])) * b \
+                + (float(param[2]) - float(preParam[2])) * c \
+                + (float(param[3]) - float(preParam[3])) * d
+    """        for debug
+    while calc>1000 or calc<-1000:
+        print("debug %s:%s" %(preParam[3], param[3]))
+        getStatus()
+        preParam = list()
+        param = list()
+        for i in range(4):
+            preParam.append(
+                tool.image_to_string(
+                    Image.open(pre_ss+str(i)+".png"),
+                    lang="eng",
+                    builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                ).replace(".", "")
+            )
+            param.append(
+                tool.image_to_string(
+                Image.open(ss+str(i)+".png"),
+                lang="eng",
+                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                ).replace(".", "")
+            )
+        print(preParam)
+        print(param)
+        calc = (int(param[0]) - int(preParam[0])) * a \
+                + (int(param[1]) - int(preParam[1])) * b \
+                + (int(param[2]) - int(preParam[2])) * c \
+                + (int(param[3]) - int(preParam[3])) * d
+    """
     print("筋力(%.2f)：%d\n敏捷(%.2f)：%d\n知力(%.2f)：%d\n体力(%.2f)：%d" %(a,int(param[0]) - int(preParam[0]),
                 b, int(param[1]) - int(preParam[1]),
                 c, int(param[2]) - int(preParam[2]),
                 d, int(param[3]) - int(preParam[3])))
-
-    calc = (int(param[0]) - int(preParam[0])) * a \
-                + (int(param[1]) - int(preParam[1])) * b \
-                + (int(param[2]) - int(preParam[2])) * c \
-                + (int(param[3]) - int(preParam[3])) * d \
 
     print("Calculation Res: %.2f" %calc)
     if (calc > 0):
@@ -89,11 +136,15 @@ def main(args):
     print("---script start---")
 
     getStatus()
-    param_zero = tool.image_to_string(
-        Image.open(pre_ss),
-        lang="eng",
-        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
-    ).split()
+    param_zero = list()
+    for i in range(4):
+        param_zero.append(
+            tool.image_to_string(
+                Image.open(pre_ss+str(i)+".png"),
+                lang="eng",
+                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+            ).replace(".", "")
+        )
 
     for i in range(int(args[6])):
         print("%d/%d" %(i+1,int(args[6])))
@@ -108,11 +159,15 @@ def main(args):
         print("-----\n")
     print("---script end---")
     getStatus()
-    param_end = tool.image_to_string(
-        Image.open(pre_ss),
-        lang="eng",
-        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
-    ).split()
+    param_end = list()
+    for i in range(4):
+        param_end.append(
+            tool.image_to_string(
+                Image.open(pre_ss+str(i)+".png"),
+                lang="eng",
+                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+            ).replace(".", "")
+        )
 
     print("result:")
     print("筋力：{:+}、敏捷：{:+}、知力：{:+}、体力：{:+}". format(int(param_end[0]) - int(param_zero[0]),

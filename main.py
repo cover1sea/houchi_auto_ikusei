@@ -17,7 +17,10 @@ ss = r"%s\status" %(ss_dir)
 #tesseract(ocr)のディレクトリ
 pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 tool = pyocr.get_available_tools()[0]
+builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+builder.tesseract_configs.append("digits")
 
+##540p point value
 preStatusxy = [
         [380, 405,        #y1, y2
         130, 193],        #x1, x2
@@ -44,6 +47,59 @@ tapxy=[
         [380, 680]      #b級/accept
 ]
 
+
+
+def resolution_adjustment():
+    default_x = 540
+    default_y = 960
+    res = subprocess.run("adb shell wm size", shell=True, stdout=subprocess.PIPE, cwd=nox_dir)
+    resol = res.stdout
+    if("540" in str(resol)):
+        print("540p")
+        #res_x = 540
+        #res_y = 960
+        print(resol)
+        return
+    elif("720" in str(resol)):
+        print("720p")
+        res_x = 720
+        res_y = 1280
+    elif("900" in str(resol)):
+        print("900p")
+        res_x = 900
+        res_y = 1600
+    elif("1080" in str(resol)):
+        print("1080p")
+        res_x = 1080
+        res_y = 1920
+    elif("1440" in str(resol)):
+        print("1440p")
+        res_x = 1440
+        res_y = 2560
+    elif("2160" in str(resol)):
+        print("2160p")
+        res_x = 2160
+        res_y = 3840
+    else :
+        print("err: unexpected screen resolution")
+        exit()
+    print(resol)
+    ##ajust resolution
+    for i in range(4):
+        preStatusxy[i][0] = int(preStatusxy[i][0]*res_y/default_y)
+        preStatusxy[i][1] = int(preStatusxy[i][1]*res_y/default_y)
+        preStatusxy[i][2] = int(preStatusxy[i][2]*res_x/default_x)
+        preStatusxy[i][3] = int(preStatusxy[i][3]*res_x/default_x)
+        statusxy[i][0] = int(statusxy[i][0]*res_y/default_y)
+        statusxy[i][1] = int(statusxy[i][1]*res_y/default_y)
+        statusxy[i][2] = int(statusxy[i][2]*res_x/default_x)
+        statusxy[i][3] = int(statusxy[i][3]*res_x/default_x)
+    tapxy[0][0] = tapxy[0][0]*res_x/default_x
+    tapxy[0][1] = tapxy[0][1]*res_y/default_y
+    tapxy[1][0] = tapxy[1][0]*res_x/default_x
+    tapxy[1][1] = tapxy[1][1]*res_y/default_y
+
+
 def tap(n):
     subprocess.call("nox_adb shell input touchscreen tap %d %d" % (tapxy[n][0], tapxy[n][1]), \
         shell=True, cwd=nox_dir)
@@ -52,7 +108,7 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb exec-out screencap -p > screen_1.png", shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    ret, img_gray = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 150, 255, cv2.THRESH_BINARY)
+    ret, img_gray = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 160, 255, cv2.THRESH_BINARY)
     #ret, img_gray = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
     for i in range(4):
         cv2.imwrite(pre_ss+str(i)+".png", 
@@ -71,17 +127,16 @@ def calcStatus(a,b,c,d):
             tool.image_to_string(
                 Image.open(pre_ss+str(i)+".png"),
                 lang="eng",
-                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                builder=builder
             ).replace(".", "")
         )
         param.append(
             tool.image_to_string(
             Image.open(ss+str(i)+".png"),
             lang="eng",
-            builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+            builder=builder
             ).replace(".", "")
         )
-
     #print(preParam)
     #print(param)
     calc = (float(param[0]) - float(preParam[0])) * a \
@@ -135,6 +190,7 @@ def calcStatus(a,b,c,d):
 def main(args):
     print("---script start---")
 
+    resolution_adjustment()
     getStatus()
     param_zero = list()
     for i in range(4):
@@ -142,7 +198,7 @@ def main(args):
             tool.image_to_string(
                 Image.open(pre_ss+str(i)+".png"),
                 lang="eng",
-                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                builder=builder
             ).replace(".", "")
         )
 
@@ -165,7 +221,7 @@ def main(args):
             tool.image_to_string(
                 Image.open(pre_ss+str(i)+".png"),
                 lang="eng",
-                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                builder=builder
             ).replace(".", "")
         )
 

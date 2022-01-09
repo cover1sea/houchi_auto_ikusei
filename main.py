@@ -103,7 +103,7 @@ def resolution_adjustment():
 def tap(n):
     subprocess.call("nox_adb shell input touchscreen tap %d %d" % (tapxy[n][0], tapxy[n][1]), \
         shell=True, cwd=nox_dir)
-    time.sleep(0.5)
+    time.sleep(0.3)
 
 def getStatus():
     subprocess.call("nox_adb exec-out screencap -p > screen_1.png", shell=True, cwd=ss_dir)
@@ -147,7 +147,7 @@ def calcStatus(a,b,c,d):
                         + (float(param[2]) - float(calcStatus.preParam[2])) * c \
                         + (float(param[3]) - float(calcStatus.preParam[3])) * d
         except ValueError:
-            print("育成ステータスが読み込めません")
+            print("err: 育成ステータスが読み込めません")
             img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
             img_bgr = img[tapxy[0][1], tapxy[0][0], 2]
             time.sleep(1)
@@ -190,12 +190,17 @@ def calcStatus(a,b,c,d):
                     c, int(param[2]) - int(calcStatus.preParam[2]), calcStatus.preParam[2], param[2],
                     d, int(param[3]) - int(calcStatus.preParam[3]), calcStatus.preParam[3], param[3]))
         
-        #読み取りミス用
+        #誤認識用
         flg_ocr_failure = 0
         for i in range(4):
-            if(abs(int(param[i]) - int(calcStatus.preParam[i])) > 20):
-                print("ステータス取得エラー検知：ステータスを再読み込みします...")
-                time.sleep(2.5)
+            if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20:
+                calcStatus.ocr_failure_cnt += 1
+                if calcStatus.ocr_failure_cnt > 10:
+                    print("err: OCRリトライ回数超過、ステータスリセットのため育成確定します")
+                    tap(1)
+                else:
+                    print("err: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
+                    time.sleep(2.5)
                 getStatus()
                 calcStatus.preParam = list()
                 for i in range(4):
@@ -250,6 +255,8 @@ def main(args):
                 tap(0)
         else:
                 tap(1)
+        
+        calcStatus.ocr_failure_cnt = 0
         getStatus()
 
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))

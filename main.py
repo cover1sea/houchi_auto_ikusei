@@ -33,13 +33,13 @@ preStatusxy = [
 ] 
 statusxy = [
         [380, 405,        #y1, y2
-        345, 416],        #x1, x2
+        348, 416],        #x1, x2
         [405, 435,
-        345, 416],
+        348, 416],
         [435, 465,
-        345, 416],
+        348, 416],
         [465, 495,
-        345, 416]
+        348, 416]
 ]
 
 tapxy=[
@@ -191,6 +191,7 @@ def calcStatus(a,b,c,d):
                     d, int(param[3]) - int(calcStatus.preParam[3]), calcStatus.preParam[3], param[3]))
         
         #読み取りミス用
+        flg_ocr_failure = 0
         for i in range(4):
             if(abs(int(param[i]) - int(calcStatus.preParam[i])) > 20):
                 print("ステータス取得エラー検知：ステータスを再読み込みします...")
@@ -205,10 +206,14 @@ def calcStatus(a,b,c,d):
                             builder=builder
                         ).replace(".", "")
                     )
-                calc = -1
+                flg_ocr_failure = 1
+                break
+        if(flg_ocr_failure == 1):
+            continue
+
 
         print("Calculation Res: %.2f" %calc)
-        if ((calc > 0) & (calc<100)):
+        if (calc > 0):
             print("Accept")
             tap(1)
             for i in range(4):

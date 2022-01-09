@@ -189,6 +189,23 @@ def calcStatus(a,b,c,d):
                     b, int(param[1]) - int(calcStatus.preParam[1]), calcStatus.preParam[1], param[1],
                     c, int(param[2]) - int(calcStatus.preParam[2]), calcStatus.preParam[2], param[2],
                     d, int(param[3]) - int(calcStatus.preParam[3]), calcStatus.preParam[3], param[3]))
+        
+        #読み取りミス用
+        for i in range(4):
+            if(abs(int(param[i]) - int(calcStatus.preParam[i])) > 20):
+                print("ステータス取得エラー検知：ステータスを再読み込みします...")
+                time.sleep(2.5)
+                getStatus()
+                calcStatus.preParam = list()
+                for i in range(4):
+                    calcStatus.preParam.append(
+                        tool.image_to_string(
+                            Image.open(pre_ss+str(i)+".png"),
+                            lang="eng",
+                            builder=builder
+                        ).replace(".", "")
+                    )
+                calc = -1
 
         print("Calculation Res: %.2f" %calc)
         if ((calc > 0) & (calc<100)):

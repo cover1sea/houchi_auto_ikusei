@@ -43,7 +43,7 @@ statusxy = [
 ]
 
 tapxy=[
-        [150, 680],     #c級/cancel
+        [200, 700],     #c級/cancel
         [380, 680]      #b級/accept
 ]
 
@@ -94,10 +94,10 @@ def resolution_adjustment():
         statusxy[i][1] = int(statusxy[i][1]*res_y/default_y)
         statusxy[i][2] = int(statusxy[i][2]*res_x/default_x)
         statusxy[i][3] = int(statusxy[i][3]*res_x/default_x)
-    tapxy[0][0] = tapxy[0][0]*res_x/default_x
-    tapxy[0][1] = tapxy[0][1]*res_y/default_y
-    tapxy[1][0] = tapxy[1][0]*res_x/default_x
-    tapxy[1][1] = tapxy[1][1]*res_y/default_y
+    tapxy[0][0] = int(tapxy[0][0]*res_x/default_x)
+    tapxy[0][1] = int(tapxy[0][1]*res_y/default_y)
+    tapxy[1][0] = int(tapxy[1][0]*res_x/default_x)
+    tapxy[1][1] = int(tapxy[1][1]*res_y/default_y)
 
 
 def tap(n):
@@ -120,72 +120,88 @@ def getStatus():
 
 
 def calcStatus(a,b,c,d):
-    preParam = list()
-    param = list()
-    for i in range(4):
-        preParam.append(
-            tool.image_to_string(
-                Image.open(pre_ss+str(i)+".png"),
-                lang="eng",
-                builder=builder
-            ).replace(".", "")
-        )
-        param.append(
-            tool.image_to_string(
-            Image.open(ss+str(i)+".png"),
-            lang="eng",
-            builder=builder
-            ).replace(".", "")
-        )
-    #print(preParam)
-    #print(param)
-    calc = (float(param[0]) - float(preParam[0])) * a \
-                + (float(param[1]) - float(preParam[1])) * b \
-                + (float(param[2]) - float(preParam[2])) * c \
-                + (float(param[3]) - float(preParam[3])) * d
-    """        for debug
-    while calc>1000 or calc<-1000:
-        print("debug %s:%s" %(preParam[3], param[3]))
-        getStatus()
-        preParam = list()
+    while(1):
         param = list()
         for i in range(4):
+            """
             preParam.append(
                 tool.image_to_string(
                     Image.open(pre_ss+str(i)+".png"),
                     lang="eng",
-                    builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                    builder=builder
                 ).replace(".", "")
             )
+            """
             param.append(
                 tool.image_to_string(
                 Image.open(ss+str(i)+".png"),
                 lang="eng",
-                builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                builder=builder
                 ).replace(".", "")
             )
-        print(preParam)
-        print(param)
-        calc = (int(param[0]) - int(preParam[0])) * a \
-                + (int(param[1]) - int(preParam[1])) * b \
-                + (int(param[2]) - int(preParam[2])) * c \
-                + (int(param[3]) - int(preParam[3])) * d
-    """
-    print("筋力(%.2f)：%d\n敏捷(%.2f)：%d\n知力(%.2f)：%d\n体力(%.2f)：%d" %(a,int(param[0]) - int(preParam[0]),
-                b, int(param[1]) - int(preParam[1]),
-                c, int(param[2]) - int(preParam[2]),
-                d, int(param[3]) - int(preParam[3])))
+        #print(preParam)
+        #print(param)
+        try:
+            calc = (float(param[0]) - float(calcStatus.preParam[0])) * a \
+                        + (float(param[1]) - float(calcStatus.preParam[1])) * b \
+                        + (float(param[2]) - float(calcStatus.preParam[2])) * c \
+                        + (float(param[3]) - float(calcStatus.preParam[3])) * d
+        except ValueError:
+            print("育成ステータスが読み込めません")
+            img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+            img_bgr = img[tapxy[0][1], tapxy[0][0], 2]
+            time.sleep(1)
+            if img_bgr > 150:
+                getStatus()
+                continue
+            else:
+                return
+        """        for debug
+        while calc>1000 or calc<-1000:
+            print("debug %s:%s" %(preParam[3], param[3]))
+            getStatus()
+            preParam = list()
+            param = list()
+            for i in range(4):
+                preParam.append(
+                    tool.image_to_string(
+                        Image.open(pre_ss+str(i)+".png"),
+                        lang="eng",
+                        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                    ).replace(".", "")
+                )
+                param.append(
+                    tool.image_to_string(
+                    Image.open(ss+str(i)+".png"),
+                    lang="eng",
+                    builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+                    ).replace(".", "")
+                )
+            print(preParam)
+            print(param)
+            calc = (int(param[0]) - int(preParam[0])) * a \
+                    + (int(param[1]) - int(preParam[1])) * b \
+                    + (int(param[2]) - int(preParam[2])) * c \
+                    + (int(param[3]) - int(preParam[3])) * d
+        """
+        print("筋力(%.2f)：%d\t(%s -> %s)\n敏捷(%.2f)：%d\t(%s -> %s)\n知力(%.2f)：%d\t(%s -> %s)\n体力(%.2f)：%d\t(%s -> %s)" %(
+                    a,int(param[0]) - int(calcStatus.preParam[0]), calcStatus.preParam[0], param[0],
+                    b, int(param[1]) - int(calcStatus.preParam[1]), calcStatus.preParam[1], param[1],
+                    c, int(param[2]) - int(calcStatus.preParam[2]), calcStatus.preParam[2], param[2],
+                    d, int(param[3]) - int(calcStatus.preParam[3]), calcStatus.preParam[3], param[3]))
 
-    print("Calculation Res: %.2f" %calc)
-    if (calc > 0):
-        print("Accept")
-        tap(1)
+        print("Calculation Res: %.2f" %calc)
+        if ((calc > 0) & (calc<100)):
+            print("Accept")
+            tap(1)
+            for i in range(4):
+                calcStatus.preParam[i] = param[i]
+            #time.sleep(2.5)
 
-        time.sleep(2.5)
-
-    else:
-        print("Cancel")
-        tap(0)
+        else:
+            print("Cancel")
+            tap(0)
+        break
 
 def main(args):
     print("---script start---")
@@ -201,6 +217,9 @@ def main(args):
                 builder=builder
             ).replace(".", "")
         )
+    calcStatus.preParam = list()
+    for i in range(4):
+        calcStatus.preParam.append(param_zero[i])
 
     for i in range(int(args[6])):
         print("%d/%d" %(i+1,int(args[6])))

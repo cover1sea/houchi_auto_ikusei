@@ -20,6 +20,8 @@ tool = pyocr.get_available_tools()[0]
 builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
 builder.tesseract_configs.append("digits")
 
+MAX_OCR_RETRY = 5
+
 ##540p point value
 preStatusxy = [
         [380, 405,        #y1, y2
@@ -193,14 +195,16 @@ def calcStatus(a,b,c,d):
         #誤認識用
         flg_ocr_failure = 0
         for i in range(4):
-            if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20:
+            if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20: #C級、B級の育成変動値は20は超えない
                 calcStatus.ocr_failure_cnt += 1
-                if calcStatus.ocr_failure_cnt > 10:
+                if calcStatus.ocr_failure_cnt > MAX_OCR_RETRY:
                     print("err: OCRリトライ回数超過、ステータスリセットのため育成確定します")
                     tap(1)
+                    flg_ocr_failure = 2   
                 else:
                     print("err: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
                     time.sleep(2.5)
+                    flg_ocr_failure = 1
                 getStatus()
                 calcStatus.preParam = list()
                 for i in range(4):
@@ -211,10 +215,11 @@ def calcStatus(a,b,c,d):
                             builder=builder
                         ).replace(".", "")
                     )
-                flg_ocr_failure = 1
                 break
-        if(flg_ocr_failure == 1):
+        if flg_ocr_failure == 1:
             continue
+        elif flg_ocr_failure == 2:
+            break
 
 
         print("Calculation Res: %.2f" %calc)

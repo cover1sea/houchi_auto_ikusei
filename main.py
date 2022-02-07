@@ -3,14 +3,15 @@ import time
 import sys
 import os
 import subprocess
+import signal
 import cv2
 import pyocr
 import pyocr.builders
 from PIL import Image
 
 
-#nox_adbのディレクトリ
-nox_dir = r"F:\\Nox\bin"
+#nox_adbのディレクトリ *不要なのでコメントアウト
+#nox_dir = r"F:\\Nox\bin"
 ss_dir = r"%s\tmp" %(os.getcwd())
 pre_ss = r"%s\pre_status" %(ss_dir)
 ss = r"%s\status" %(ss_dir)
@@ -21,6 +22,12 @@ builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
 builder.tesseract_configs.append("digits")
 
 MAX_OCR_RETRY = 5
+NUM_ARGS = 7
+SEC_WAIT_TAP = 0.3
+SEC_WAIT_GET_STATUS = 0
+SEC_RETRY_GET_STATUS_INTERVAL = 1
+SEC_RETRY_OCR_INTERVAL = 2.5
+SEC_WAIT_SIGINT = 2
 
 ##540p point value
 preStatusxy = [
@@ -48,13 +55,83 @@ tapxy=[
         [200, 700],     #c級/cancel
         [380, 680]      #b級/accept
 ]
+param_zero = list()
 
 
+def main(args):
+    init(args)
+    exec_ikusei(args)
+    show_result()
+
+def init(args):
+    signal.signal(signal.SIGINT, sigint_handler)
+    if len(args)!=NUM_ARGS:
+        print("err: number of args not matched.")
+        print(args)
+        exit()
+    if not os.path.exists(ss_dir):
+        print("err: ss_dir not exist")
+        print(ss_dir)
+        exit()
+    resolution_adjustment()
+    getStatus()
+    for i in range(4):
+        param_zero.append(
+            tool.image_to_string(
+                Image.open(pre_ss+str(i)+".png"),
+                lang="eng",
+                builder=builder
+            ).replace(".", "")
+        )
+    calcStatus.preParam = list()
+    for i in range(4):
+        calcStatus.preParam.append(param_zero[i])
+
+def sigint_handler(signal, frame):
+    print("---script terminated by SIGINT---")
+    time.sleep(SEC_WAIT_SIGINT)
+    show_result()
+    exit()
+
+def exec_ikusei(args):
+    print("---script start---")
+    for i in range(int(args[6])):
+        print("%d/%d" %(i+1,int(args[6])))
+
+        if(args[1] == 'c'):
+                tap(0)
+        else:
+                tap(1)
+        
+        calcStatus.ocr_failure_cnt = 0
+        getStatus()
+
+        calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
+        print("-----\n")
+    print("---script end---")
+    
+def show_result():
+    getStatus()
+    param_end = list()
+    for i in range(4):
+        param_end.append(
+            tool.image_to_string(
+                Image.open(pre_ss+str(i)+".png"),
+                lang="eng",
+                builder=builder
+            ).replace(".", "")
+        )
+
+    print("result:")
+    print("筋力：{:+}、敏捷：{:+}、知力：{:+}、体力：{:+}". format(int(param_end[0]) - int(param_zero[0]),
+                                                                int(param_end[1]) - int(param_zero[1]),
+                                                                int(param_end[2]) - int(param_zero[2]),
+                                                                int(param_end[3]) - int(param_zero[3])))
 
 def resolution_adjustment():
     default_x = 540
     default_y = 960
-    res = subprocess.run("adb shell wm size", shell=True, stdout=subprocess.PIPE, cwd=nox_dir)
+    res = subprocess.run("nox_adb shell wm size", shell=True, stdout=subprocess.PIPE)
     resol = res.stdout
     if("540" in str(resol)):
         print("540p")
@@ -104,8 +181,8 @@ def resolution_adjustment():
 
 def tap(n):
     subprocess.call("nox_adb shell input touchscreen tap %d %d" % (tapxy[n][0], tapxy[n][1]), \
-        shell=True, cwd=nox_dir)
-    time.sleep(0.3)
+        shell=True)
+    time.sleep(SEC_WAIT_TAP)
 
 def getStatus():
     subprocess.call("nox_adb exec-out screencap -p > screen_1.png", shell=True, cwd=ss_dir)
@@ -118,7 +195,7 @@ def getStatus():
         cv2.imwrite(ss+str(i)+".png", 
                     img_gray[statusxy[i][0]:statusxy[i][1], statusxy[i][2]:statusxy[i][3]])
 
-    #time.sleep(1)
+    time.sleep(SEC_WAIT_GET_STATUS)
 
 
 def calcStatus(a,b,c,d):
@@ -149,43 +226,16 @@ def calcStatus(a,b,c,d):
                         + (float(param[2]) - float(calcStatus.preParam[2])) * c \
                         + (float(param[3]) - float(calcStatus.preParam[3])) * d
         except ValueError:
-            print("err: 育成ステータスが読み込めません")
+            print("warn: 育成ステータスが読み込めません")
             img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
             img_bgr = img[tapxy[0][1], tapxy[0][0], 2]
-            time.sleep(1)
+            time.sleep(SEC_RETRY_GET_STATUS_INTERVAL)
             if img_bgr > 150:
                 getStatus()
                 continue
             else:
                 return
-        """        for debug
-        while calc>1000 or calc<-1000:
-            print("debug %s:%s" %(preParam[3], param[3]))
-            getStatus()
-            preParam = list()
-            param = list()
-            for i in range(4):
-                preParam.append(
-                    tool.image_to_string(
-                        Image.open(pre_ss+str(i)+".png"),
-                        lang="eng",
-                        builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
-                    ).replace(".", "")
-                )
-                param.append(
-                    tool.image_to_string(
-                    Image.open(ss+str(i)+".png"),
-                    lang="eng",
-                    builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
-                    ).replace(".", "")
-                )
-            print(preParam)
-            print(param)
-            calc = (int(param[0]) - int(preParam[0])) * a \
-                    + (int(param[1]) - int(preParam[1])) * b \
-                    + (int(param[2]) - int(preParam[2])) * c \
-                    + (int(param[3]) - int(preParam[3])) * d
-        """
+
         print("筋力(%.2f)：%d\t(%s -> %s)\n敏捷(%.2f)：%d\t(%s -> %s)\n知力(%.2f)：%d\t(%s -> %s)\n体力(%.2f)：%d\t(%s -> %s)" %(
                     a,int(param[0]) - int(calcStatus.preParam[0]), calcStatus.preParam[0], param[0],
                     b, int(param[1]) - int(calcStatus.preParam[1]), calcStatus.preParam[1], param[1],
@@ -195,7 +245,7 @@ def calcStatus(a,b,c,d):
         #誤認識用
         flg_ocr_failure = 0
         for i in range(4):
-            if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20: #C級、B級の育成変動値は20は超えない
+            if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20: #C級、B級の育成変動値は20を超えない
                 calcStatus.ocr_failure_cnt += 1
                 if calcStatus.ocr_failure_cnt > MAX_OCR_RETRY:
                     print("err: OCRリトライ回数超過、ステータスリセットのため育成確定します")
@@ -203,7 +253,7 @@ def calcStatus(a,b,c,d):
                     flg_ocr_failure = 2   
                 else:
                     print("err: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
-                    time.sleep(2.5)
+                    time.sleep(SEC_RETRY_OCR_INTERVAL)
                     flg_ocr_failure = 1
                 getStatus()
                 calcStatus.preParam = list()
@@ -228,60 +278,11 @@ def calcStatus(a,b,c,d):
             tap(1)
             for i in range(4):
                 calcStatus.preParam[i] = param[i]
-            #time.sleep(2.5)
 
         else:
             print("Cancel")
             tap(0)
         break
 
-def main(args):
-    print("---script start---")
-
-    resolution_adjustment()
-    getStatus()
-    param_zero = list()
-    for i in range(4):
-        param_zero.append(
-            tool.image_to_string(
-                Image.open(pre_ss+str(i)+".png"),
-                lang="eng",
-                builder=builder
-            ).replace(".", "")
-        )
-    calcStatus.preParam = list()
-    for i in range(4):
-        calcStatus.preParam.append(param_zero[i])
-
-    for i in range(int(args[6])):
-        print("%d/%d" %(i+1,int(args[6])))
-
-        if(args[1] == 'c'):
-                tap(0)
-        else:
-                tap(1)
-        
-        calcStatus.ocr_failure_cnt = 0
-        getStatus()
-
-        calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
-        print("-----\n")
-    print("---script end---")
-    getStatus()
-    param_end = list()
-    for i in range(4):
-        param_end.append(
-            tool.image_to_string(
-                Image.open(pre_ss+str(i)+".png"),
-                lang="eng",
-                builder=builder
-            ).replace(".", "")
-        )
-
-    print("result:")
-    print("筋力：{:+}、敏捷：{:+}、知力：{:+}、体力：{:+}". format(int(param_end[0]) - int(param_zero[0]),
-                                                                int(param_end[1]) - int(param_zero[1]),
-                                                                int(param_end[2]) - int(param_zero[2]),
-                                                                int(param_end[3]) - int(param_zero[3])))
-
-main(sys.argv)
+if __name__ == '__main__':    
+    main(sys.argv)

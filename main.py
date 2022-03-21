@@ -20,9 +20,11 @@ pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.ex
 tool = pyocr.get_available_tools()[0]
 builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
 builder.tesseract_configs.append("digits")
+dev_addr = "0.0.0.0"
 
 MAX_OCR_RETRY = 5
 NUM_ARGS = 7
+NUM_ARGS_DEV = 8
 SEC_WAIT_TAP = 0.3
 SEC_WAIT_GET_STATUS = 0
 SEC_RETRY_GET_STATUS_INTERVAL = 1
@@ -64,11 +66,17 @@ def main(args):
     show_result()
 
 def init(args):
+    global dev_addr
     signal.signal(signal.SIGINT, sigint_handler)
-    if len(args)!=NUM_ARGS:
+    if len(args)!=NUM_ARGS and len(args) != NUM_ARGS_DEV:
         print("err: number of args not matched.")
         print(args)
         exit()
+    if len(args) == NUM_ARGS_DEV:
+        dev_addr = args[7]
+    else:
+        dev_str = subprocess.check_output(["nox_adb", "devices"])
+        dev_addr = dev_str.decode("utf-8").splitlines()[1].split("\t")[0]
     if not os.path.exists(ss_dir):
         print("err: ss_dir not exist")
         print(ss_dir)
@@ -131,18 +139,20 @@ def show_result():
 def resolution_adjustment():
     default_x = 540
     default_y = 960
-    res = subprocess.run("nox_adb shell wm size", shell=True, stdout=subprocess.PIPE)
+    res = subprocess.run("nox_adb -s %s shell wm size" %(dev_addr), shell=True, stdout=subprocess.PIPE)
     resol = res.stdout
     if("540" in str(resol)):
         print("540p")
         #res_x = 540
         #res_y = 960
         print(resol)
+        print("warn: 解像度が低すぎるため誤認識率が高くなる可能性があります。(推奨：1080p)")
         return
     elif("720" in str(resol)):
         print("720p")
         res_x = 720
         res_y = 1280
+        print("warn: 解像度が低すぎるため誤認識率が高くなる可能性があります。(推奨：1080p)")
     elif("900" in str(resol)):
         print("900p")
         res_x = 900
@@ -180,12 +190,12 @@ def resolution_adjustment():
 
 
 def tap(n):
-    subprocess.call("nox_adb shell input touchscreen tap %d %d" % (tapxy[n][0], tapxy[n][1]), \
+    subprocess.call("nox_adb -s %s shell input touchscreen tap %d %d" % (dev_addr, tapxy[n][0], tapxy[n][1]), \
         shell=True)
     time.sleep(SEC_WAIT_TAP)
 
 def getStatus():
-    subprocess.call("nox_adb exec-out screencap -p > screen_1.png", shell=True, cwd=ss_dir)
+    subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
     ret, img_gray = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 160, 255, cv2.THRESH_BINARY)
     #ret, img_gray = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
@@ -248,11 +258,11 @@ def calcStatus(a,b,c,d):
             if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20: #C級、B級の育成変動値は20を超えない
                 calcStatus.ocr_failure_cnt += 1
                 if calcStatus.ocr_failure_cnt > MAX_OCR_RETRY:
-                    print("err: OCRリトライ回数超過、ステータスリセットのため育成確定します")
+                    print("warn: OCRリトライ回数超過、ステータスリセットのため育成確定します")
                     tap(1)
                     flg_ocr_failure = 2   
                 else:
-                    print("err: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
+                    print("warn: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
                     time.sleep(SEC_RETRY_OCR_INTERVAL)
                     flg_ocr_failure = 1
                 getStatus()

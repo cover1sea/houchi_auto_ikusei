@@ -54,10 +54,19 @@ statusxy = [
         348, 416]
 ]
 
+# × の位置(色は255,255,255)
+kakinxy = [496, 41]
+
 tapxy=[
         [200, 700],     #c級/cancel
-        [380, 680]      #b級/accept
+        [380, 680],     #b級/accept
+        [496, 41]       #課金ポップアップ×
 ]
+
+TAP_C     = 0
+TAP_B     = 1
+TAP_KAKIN = 2
+
 param_zero = list()
 
 
@@ -107,10 +116,10 @@ def exec_ikusei(args):
     for i in range(int(args[6])):
         print("%d/%d" %(i+1,int(args[6])))
 
-        if(args[1] == 'c'):
-                tap(0)
+        if( rgs[1] == 'c':
+                tap(TAP_C)
         else:
-                tap(1)
+                tap(TAP_B)
         
         calcStatus.ocr_failure_cnt = 0
         getStatus()
@@ -118,7 +127,7 @@ def exec_ikusei(args):
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
         print("-----\n")
         #stopファイル確認
-        if(os.path.isfile(os.getcwd() + stopFileName)):
+        if os.path.isfile(os.getcwd() + stopFileName):
             os.remove(os.getcwd() + stopFileName)
             print("script stop by stop command")
             break
@@ -148,31 +157,31 @@ def resolution_adjustment():
     default_y = 960
     res = subprocess.run("nox_adb -s %s shell wm size" %(dev_addr), shell=True, stdout=subprocess.PIPE)
     resol = res.stdout
-    if("540" in str(resol)):
+    if "540" in str(resol):
         print("540p")
         #res_x = 540
         #res_y = 960
         print(resol)
         print("warn: 解像度が低すぎるため誤認識率が高くなる可能性があります。(推奨：1080p)")
         return
-    elif("720" in str(resol)):
+    elif "720" in str(resol):
         print("720p")
         res_x = 720
         res_y = 1280
         print("warn: 解像度が低すぎるため誤認識率が高くなる可能性があります。(推奨：1080p)")
-    elif("900" in str(resol)):
+    elif "900" in str(resol):
         print("900p")
         res_x = 900
         res_y = 1600
-    elif("1080" in str(resol)):
+    elif "1080" in str(resol):
         print("1080p")
         res_x = 1080
         res_y = 1920
-    elif("1440" in str(resol)):
+    elif "1440" in str(resol):
         print("1440p")
         res_x = 1440
         res_y = 2560
-    elif("2160" in str(resol)):
+    elif "2160" in str(resol):
         print("2160p")
         res_x = 2160
         res_y = 3840
@@ -204,6 +213,11 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+    while isPopedKakinScreen():
+        tap(TAP_KAKIN)
+        subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
+        img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+
     ret, img_gray = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 160, 255, cv2.THRESH_BINARY)
     #ret, img_gray = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
     for i in range(4):
@@ -214,6 +228,8 @@ def getStatus():
 
     time.sleep(SEC_WAIT_GET_STATUS)
 
+def isPopedKakinScreen():
+    return img[kakinxy[1]][kakinxy[0][0] == 255 and img[kakinxy[1]][kakinxy[0][1] == 255 and img[kakinxy[1]][kakinxy[0][2] == 255
 
 def calcStatus(a,b,c,d):
     while(1):
@@ -266,7 +282,7 @@ def calcStatus(a,b,c,d):
                 calcStatus.ocr_failure_cnt += 1
                 if calcStatus.ocr_failure_cnt > MAX_OCR_RETRY:
                     print("warn: OCRリトライ回数超過、ステータスリセットのため育成確定します")
-                    tap(1)
+                    tap(TAP_B)
                     flg_ocr_failure = 2   
                 else:
                     print("warn: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
@@ -290,15 +306,15 @@ def calcStatus(a,b,c,d):
 
 
         print("Calculation Res: %.2f" %calc)
-        if (calc > 0):
+        if calc > 0:
             print("Accept")
-            tap(1)
+            tap(TAP_B)
             for i in range(4):
                 calcStatus.preParam[i] = param[i]
 
         else:
             print("Cancel")
-            tap(0)
+            tap(TAP_C)
         break
 
 if __name__ == '__main__':    

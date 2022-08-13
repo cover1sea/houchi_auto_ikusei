@@ -15,6 +15,7 @@ from PIL import Image
 ss_dir = r"%s\tmp" %(os.getcwd())
 pre_ss = r"%s\pre_status" %(ss_dir)
 ss = r"%s\status" %(ss_dir)
+stopFileName = "stop"
 #tesseract(ocr)のディレクトリ
 pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 tool = pyocr.get_available_tools()[0]
@@ -116,8 +117,14 @@ def exec_ikusei(args):
 
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
         print("-----\n")
+        #stopファイル確認
+        if(os.path.isfile(os.getcwd() + stopFileName)):
+            os.remove(os.getcwd() + stopFileName)
+            print("script stop by stop command")
+            break
+
     print("---script end---")
-    
+
 def show_result():
     getStatus()
     param_end = list()

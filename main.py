@@ -209,10 +209,11 @@ def resolution_adjustment():
         statusxy[i][1] = int(statusxy[i][1]*res_y/default_y)
         statusxy[i][2] = int(statusxy[i][2]*res_x/default_x)
         statusxy[i][3] = int(statusxy[i][3]*res_x/default_x)
-    tapxy[0][0] = int(tapxy[0][0]*res_x/default_x)
-    tapxy[0][1] = int(tapxy[0][1]*res_y/default_y)
-    tapxy[1][0] = int(tapxy[1][0]*res_x/default_x)
-    tapxy[1][1] = int(tapxy[1][1]*res_y/default_y)
+    for i in range(3):
+        tapxy[i][0] = int(tapxy[i][0]*res_x/default_x)
+        tapxy[i][1] = int(tapxy[i][1]*res_y/default_y)
+    kakinxy[0] = int(kakinxy[0]*res_x/default_x)
+    kakinxy[1] = int(kakinxy[1]*res_y/default_y)
 
 
 def tap(n):
@@ -223,6 +224,8 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+    print("dbg %d %d %d" %(img[kakinxy[1]][kakinxy[0]][0], img[kakinxy[1]][kakinxy[0]][1], img[kakinxy[1]][kakinxy[0]][2]))
+
     while isPopedKakinScreen(img):
         print("info: 課金ポップアウト検出")
         tap(TAP_KAKIN)

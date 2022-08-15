@@ -1,9 +1,11 @@
 ## $python main.py c|b 筋力 敏捷 知力 体力 育成回数 ##
 import time
+import datetime
 import sys
 import os
 import subprocess
 import signal
+import csv
 import cv2
 import pyocr
 import pyocr.builders
@@ -15,6 +17,8 @@ from PIL import Image
 ss_dir = r"%s\tmp" %(os.getcwd())
 pre_ss = r"%s\pre_status" %(ss_dir)
 ss = r"%s\status" %(ss_dir)
+data_log_path = r"%s\log" %(os.getcwd())
+
 stopFilePath = r"%s\stop" %(os.getcwd())
 #tesseract(ocr)のディレクトリ
 pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
@@ -78,6 +82,10 @@ def main(args):
 
 def init(args):
     global dev_addr
+    global data_log_path
+    now = datetime.datetime.now()
+    data_log_path = data_log_path + "\\log_" + args[1] + now.strftime('_%Y%m%d_%H%M%S') + '.csv'
+
     signal.signal(signal.SIGINT, sigint_handler)
     if len(args)!=NUM_ARGS and len(args) != NUM_ARGS_DEV:
         print("err: number of args not matched.")
@@ -115,6 +123,12 @@ def sigint_handler(signal, frame):
 def exec_ikusei(args):
     print("---script start---")
     for i in range(int(args[6])):
+        #stopファイル確認
+        if os.path.isfile(stopFilePath):
+            os.remove(stopFilePath)
+            print("script stop by stop command")
+            break
+
         print("%d/%d" %(i+1,int(args[6])))
 
         if args[1] == 'c':
@@ -127,11 +141,6 @@ def exec_ikusei(args):
 
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
         print("-----\n")
-        #stopファイル確認
-        if os.path.isfile(stopFilePath):
-            os.remove(stopFilePath)
-            print("script stop by stop command")
-            break
 
     print("---script end---")
 
@@ -277,7 +286,7 @@ def calcStatus(a,b,c,d):
                     b, int(param[1]) - int(calcStatus.preParam[1]), calcStatus.preParam[1], param[1],
                     c, int(param[2]) - int(calcStatus.preParam[2]), calcStatus.preParam[2], param[2],
                     d, int(param[3]) - int(calcStatus.preParam[3]), calcStatus.preParam[3], param[3]))
-        
+
         #誤認識用
         flg_ocr_failure = 0
         for i in range(4):
@@ -307,17 +316,20 @@ def calcStatus(a,b,c,d):
         elif flg_ocr_failure == 2:
             break
 
-
+        ## 誤認識がなければここまでくる
         print("Calculation Res: %.2f" %calc)
         if calc > 0:
             print("Accept")
             tap(TAP_B)
             for i in range(4):
                 calcStatus.preParam[i] = param[i]
-
         else:
             print("Cancel")
             tap(TAP_C)
+
+        with open (data_log_path, "a") as f:
+            writer = csv.writer(f)
+            writer.writerow(["",calcStatus.preparam[0],calcStatus.preparam[1],calcStatus.preparam[2],calcStatus.preparam[3]])
         break
 
 if __name__ == '__main__':    

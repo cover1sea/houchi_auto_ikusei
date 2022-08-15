@@ -224,7 +224,6 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    print("dbg %d %d %d" %(img[kakinxy[1]][kakinxy[0]][0], img[kakinxy[1]][kakinxy[0]][1], img[kakinxy[1]][kakinxy[0]][2]))
 
     while isPopedKakinScreen(img):
         print("info: 課金ポップアウト検出")
@@ -321,18 +320,21 @@ def calcStatus(a,b,c,d):
 
         ## 誤認識がなければここまでくる
         print("Calculation Res: %.2f" %calc)
+        str_yn = ""
         if calc > 0:
             print("Accept")
             tap(TAP_B)
             for i in range(4):
                 calcStatus.preParam[i] = param[i]
+            str_yn = "y"
         else:
             print("Cancel")
             tap(TAP_C)
+            str_yn = "n"
 
         with open (data_log_path, "a") as f:
             writer = csv.writer(f)
-            writer.writerow(["",calcStatus.preParam[0],calcStatus.preParam[1],calcStatus.preParam[2],calcStatus.preParam[3]])
+            writer.writerow(["",calcStatus.preParam[0],calcStatus.preParam[1],calcStatus.preParam[2],calcStatus.preParam[3], str_yn])
         break
 
 if __name__ == '__main__':    

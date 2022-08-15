@@ -332,7 +332,7 @@ def calcStatus(a,b,c,d):
             tap(TAP_C)
             str_yn = "n"
 
-        with open (data_log_path, "a") as f:
+        with open (data_log_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["",calcStatus.preParam[0],calcStatus.preParam[1],calcStatus.preParam[2],calcStatus.preParam[3], str_yn])
         break

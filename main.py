@@ -116,7 +116,7 @@ def exec_ikusei(args):
     for i in range(int(args[6])):
         print("%d/%d" %(i+1,int(args[6])))
 
-        if( rgs[1] == 'c':
+        if args[1] == 'c':
                 tap(TAP_C)
         else:
                 tap(TAP_B)
@@ -213,7 +213,8 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    while isPopedKakinScreen():
+    while isPopedKakinScreen(img):
+        print("dbg: kakin screen enb")
         tap(TAP_KAKIN)
         subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
         img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
@@ -228,8 +229,8 @@ def getStatus():
 
     time.sleep(SEC_WAIT_GET_STATUS)
 
-def isPopedKakinScreen():
-    return img[kakinxy[1]][kakinxy[0][0] == 255 and img[kakinxy[1]][kakinxy[0][1] == 255 and img[kakinxy[1]][kakinxy[0][2] == 255
+def isPopedKakinScreen(img):
+    return img[kakinxy[1]][kakinxy[0]][0] == 255 and img[kakinxy[1]][kakinxy[0]][1] == 255 and img[kakinxy[1]][kakinxy[0]][2] == 255
 
 def calcStatus(a,b,c,d):
     while(1):

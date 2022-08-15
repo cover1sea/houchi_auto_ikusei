@@ -223,7 +223,7 @@ def tap(n):
 def getStatus():
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    while isPopedKakinScreen():
+    while isPopedKakinScreen(img):
         print("info: 課金ポップアウト検出")
         tap(TAP_KAKIN)
         time.sleep(SEC_WAIT_KAKIN)

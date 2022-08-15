@@ -329,7 +329,7 @@ def calcStatus(a,b,c,d):
 
         with open (data_log_path, "a") as f:
             writer = csv.writer(f)
-            writer.writerow(["",calcStatus.preparam[0],calcStatus.preparam[1],calcStatus.preparam[2],calcStatus.preparam[3]])
+            writer.writerow(["",calcStatus.preParam[0],calcStatus.preParam[1],calcStatus.preParam[2],calcStatus.preParam[3]])
         break
 
 if __name__ == '__main__':    

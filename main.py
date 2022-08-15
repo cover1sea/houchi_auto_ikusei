@@ -15,7 +15,7 @@ from PIL import Image
 ss_dir = r"%s\tmp" %(os.getcwd())
 pre_ss = r"%s\pre_status" %(ss_dir)
 ss = r"%s\status" %(ss_dir)
-stopFileName = "stop"
+stopFilePath = r"%s\stop" %(os.getcwd())
 #tesseract(ocr)のディレクトリ
 pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 tool = pyocr.get_available_tools()[0]
@@ -31,6 +31,7 @@ SEC_WAIT_GET_STATUS = 0
 SEC_RETRY_GET_STATUS_INTERVAL = 1
 SEC_RETRY_OCR_INTERVAL = 2.5
 SEC_WAIT_SIGINT = 2
+SEC_WAIT_KAKIN = 0.5 #+SEC_WAIT_TAP
 
 ##540p point value
 preStatusxy = [
@@ -116,7 +117,7 @@ def exec_ikusei(args):
     for i in range(int(args[6])):
         print("%d/%d" %(i+1,int(args[6])))
 
-        if( rgs[1] == 'c':
+        if rgs[1] == 'c':
                 tap(TAP_C)
         else:
                 tap(TAP_B)
@@ -127,8 +128,8 @@ def exec_ikusei(args):
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
         print("-----\n")
         #stopファイル確認
-        if os.path.isfile(os.getcwd() + stopFileName):
-            os.remove(os.getcwd() + stopFileName)
+        if os.path.isfile(stopFilePath):
+            os.remove(stopFilePath)
             print("script stop by stop command")
             break
 
@@ -214,7 +215,9 @@ def getStatus():
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
     while isPopedKakinScreen():
+        print("info: 課金ポップアウト検出")
         tap(TAP_KAKIN)
+        time.sleep(SEC_WAIT_KAKIN)
         subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
         img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
 
@@ -229,7 +232,7 @@ def getStatus():
     time.sleep(SEC_WAIT_GET_STATUS)
 
 def isPopedKakinScreen():
-    return img[kakinxy[1]][kakinxy[0][0] == 255 and img[kakinxy[1]][kakinxy[0][1] == 255 and img[kakinxy[1]][kakinxy[0][2] == 255
+    return img[kakinxy[1]][kakinxy[0]][0] == 255 and img[kakinxy[1]][kakinxy[0]][1] == 255 and img[kakinxy[1]][kakinxy[0]][2] == 255
 
 def calcStatus(a,b,c,d):
     while(1):

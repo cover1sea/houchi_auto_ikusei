@@ -61,7 +61,8 @@ statusxy = [
 
 # × の位置(色は255,255,255)
 kakinxy = [496, 41]
-
+#銅貨アイコンの位置でv2判断 v1:(55,32,35)くらい、v2:(228,173,99)くらい
+clv2xy = [180, 350]
 tapxy=[
         [200, 700],     #c級/cancel
         [380, 680],     #b級/accept
@@ -163,6 +164,7 @@ def show_result():
                                                                 int(param_end[3]) - int(param_zero[3])))
 
 def resolution_adjustment():
+    global preStatusxy, statusxy
     default_x = 540
     default_y = 960
     res = subprocess.run("nox_adb -s %s shell wm size" %(dev_addr), shell=True, stdout=subprocess.PIPE)
@@ -199,6 +201,32 @@ def resolution_adjustment():
         print("err: unexpected screen resolution")
         exit()
     print(resol)
+    if isClientV2(res_x, res_y):
+        print("Houchi client V.2-")
+        ##540p point value
+        preStatusxy = [
+            [388, 410,        #y1, y2
+            125, 193],        #x1, x2
+            [419, 440,
+            125, 193],
+            [448, 470,
+            125, 193],
+            [478, 502,
+            125, 193]
+        ] 
+        statusxy = [
+            [388, 410,        #y1, y2
+            350, 416],        #x1, x2
+            [419, 440,
+            350, 416],
+            [448, 470,
+            350, 416],
+            [478, 502,
+            350, 416]
+        ]
+    else:
+        print("Houchi client V.1")
+        
     ##ajust resolution
     for i in range(4):
         preStatusxy[i][0] = int(preStatusxy[i][0]*res_y/default_y)
@@ -215,7 +243,14 @@ def resolution_adjustment():
     kakinxy[0] = int(kakinxy[0]*res_x/default_x)
     kakinxy[1] = int(kakinxy[1]*res_y/default_y)
 
-
+def isClientV2(res_x, res_y):
+    subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
+    img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+    if img[clv2xy[1]][clv2xy[0]][2] < 80 and img[clv2xy[1]][clv2xy[0]][1] < 100 :
+        return False #v1
+    else:
+        return True #v2
+    
 def tap(n):
     subprocess.call("nox_adb -s %s shell input touchscreen tap %d %d" % (dev_addr, tapxy[n][0], tapxy[n][1]), \
         shell=True)

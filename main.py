@@ -61,8 +61,8 @@ statusxy = [
 
 # × の位置(色は255,255,255)
 kakinxy = [496, 41]
-#銅貨アイコンの位置でv2判断 v1:(55,32,35)くらい、v2:(228,173,99)くらい
-clv2xy = [180, 350]
+#フレームでv2判断 v1:(201,182,137)くらい、v2:(49,38,29)くらい
+clv2xy = [400, 1685]
 tapxy=[
         [200, 700],     #c級/cancel
         [380, 680],     #b級/accept
@@ -171,8 +171,8 @@ def resolution_adjustment():
     resol = res.stdout
     if "540" in str(resol):
         print("540p")
-        #res_x = 540
-        #res_y = 960
+        res_x = 540
+        res_y = 960
         print(resol)
         print("warn: 解像度が低すぎるため誤認識率が高くなる可能性があります。(推奨：1080p)")
         return
@@ -244,9 +244,10 @@ def resolution_adjustment():
     kakinxy[1] = int(kakinxy[1]*res_y/default_y)
 
 def isClientV2(res_x, res_y):
+    #フレームでv2判断 v1:(201,182,137)くらい、v2:(49,38,29)くらい
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    if img[clv2xy[1]][clv2xy[0]][2] < 80 and img[clv2xy[1]][clv2xy[0]][1] < 100 :
+    if img[clv2xy[1]][clv2xy[0]][2]*res_y/1920 > 100 and img[clv2xy[1]][clv2xy[0]][1]*res_x/1080 > 100 :
         return False #v1
     else:
         return True #v2

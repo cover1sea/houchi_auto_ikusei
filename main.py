@@ -5,6 +5,7 @@ import sys
 import os
 import subprocess
 import signal
+import random
 import csv
 import cv2
 import pyocr
@@ -40,13 +41,13 @@ SEC_WAIT_KAKIN = 0.5 #+SEC_WAIT_TAP
 ##540p point value
 preStatusxy = [
         [380, 405,        #y1, y2
-        130, 193],        #x1, x2
+        135, 193],        #x1, x2
         [405, 435,
-        130, 193],
+        135, 193],
         [435, 465,
-        130, 193],
+        135, 193],
         [465, 495,
-        130, 193]
+        135, 193]
 ] 
 statusxy = [
         [380, 405,        #y1, y2
@@ -206,13 +207,13 @@ def resolution_adjustment():
         ##540p point value
         preStatusxy = [
             [388, 410,        #y1, y2
-            125, 193],        #x1, x2
+            140, 193],        #x1, x2
             [419, 440,
-            125, 193],
+            140, 193],
             [448, 470,
-            125, 193],
+            140, 193],
             [478, 502,
-            125, 193]
+            140, 193]
         ] 
         statusxy = [
             [388, 410,        #y1, y2
@@ -282,18 +283,12 @@ def isPopedKakinScreen(img):
     return img[kakinxy[1]][kakinxy[0]][0] == 255 and img[kakinxy[1]][kakinxy[0]][1] == 255 and img[kakinxy[1]][kakinxy[0]][2] == 255
 
 def calcStatus(a,b,c,d):
+    rnd_width = 1.1 #画像の横幅拡大倍率、認識改善用
     while(1):
         param = list()
         for i in range(4):
             """
-            preParam.append(
-                tool.image_to_string(
-                    Image.open(pre_ss+str(i)+".png"),
-                    lang="eng",
-                    builder=builder
-                ).replace(".", "")
-            )
-            """
+
             param.append(
                 tool.image_to_string(
                 Image.open(ss+str(i)+".png"),
@@ -301,6 +296,17 @@ def calcStatus(a,b,c,d):
                 builder=builder
                 ).replace(".", "")
             )
+            """
+            img_d = Image.open(ss+str(i)+".png")
+            img_resiz = img_d.resize((int(img_d.width * rnd_width), img_d.height))
+            param.append(
+                        tool.image_to_string(
+                            img_resiz,
+                            lang="eng",
+                            builder=builder
+                        ).replace(".", "")
+            )
+            
         #print(preParam)
         #print(param)
         try:
@@ -340,10 +346,13 @@ def calcStatus(a,b,c,d):
                     flg_ocr_failure = 1
                 getStatus()
                 calcStatus.preParam = list()
+                rnd_width = random.uniform(1,1.3)
                 for i in range(4):
+                    img_d = Image.open(pre_ss+str(i)+".png")
+                    img_resiz = img_d.resize((int(img_d.width * rnd_width), img_d.height))
                     calcStatus.preParam.append(
                         tool.image_to_string(
-                            Image.open(pre_ss+str(i)+".png"),
+                            img_resiz,
                             lang="eng",
                             builder=builder
                         ).replace(".", "")

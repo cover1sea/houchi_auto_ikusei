@@ -24,7 +24,7 @@ stopFilePath = r"%s\stop" %(os.getcwd())
 #tesseract(ocr)のディレクトリ
 pyocr.tesseract.TESSERACT_CMD = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 tool = pyocr.get_available_tools()[0]
-builder=pyocr.builders.DigitBuilder(tesseract_layout=6)
+builder=pyocr.builders.DigitBuilder(tesseract_layout=10)
 builder.tesseract_configs.append("digits")
 dev_addr = "0.0.0.0"
 
@@ -207,13 +207,13 @@ def resolution_adjustment():
         ##540p point value
         preStatusxy = [
             [388, 410,        #y1, y2
-            140, 193],        #x1, x2
+            140, 200],        #x1, x2
             [419, 440,
-            140, 193],
+            140, 200],
             [448, 470,
-            140, 193],
+            140, 200],
             [478, 502,
-            140, 193]
+            140, 200]
         ] 
         statusxy = [
             [388, 410,        #y1, y2

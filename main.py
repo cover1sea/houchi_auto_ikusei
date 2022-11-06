@@ -40,24 +40,24 @@ SEC_WAIT_KAKIN = 0.5 #+SEC_WAIT_TAP
 
 ##540p point value
 preStatusxy = [
-        [380, 405,        #y1, y2
-        135, 193],        #x1, x2
-        [405, 435,
-        135, 193],
-        [435, 465,
-        135, 193],
-        [465, 495,
-        135, 193]
+    [388, 410,        #y1, y2
+    140, 200],        #x1, x2
+    [419, 440,
+    140, 200],
+    [448, 470,
+    140, 200],
+    [478, 502,
+    140, 200]
 ] 
 statusxy = [
-        [380, 405,        #y1, y2
-        348, 416],        #x1, x2
-        [405, 435,
-        348, 416],
-        [435, 465,
-        348, 416],
-        [465, 495,
-        348, 416]
+    [388, 410,        #y1, y2
+    352, 419],        #x1, x2
+    [419, 440,
+    352, 419],
+    [448, 470,
+    352, 419],
+    [478, 502,
+    352, 419]
 ]
 
 # × の位置(色は255,255,255)
@@ -204,29 +204,30 @@ def resolution_adjustment():
     print(resol)
     if isClientV2(res_x, res_y):
         print("Houchi client V.2-")
-        ##540p point value
-        preStatusxy = [
-            [388, 410,        #y1, y2
-            140, 200],        #x1, x2
-            [419, 440,
-            140, 200],
-            [448, 470,
-            140, 200],
-            [478, 502,
-            140, 200]
-        ] 
-        statusxy = [
-            [388, 410,        #y1, y2
-            352, 419],        #x1, x2
-            [419, 440,
-            352, 419],
-            [448, 470,
-            352, 419],
-            [478, 502,
-            352, 419]
-        ]
+
     else:
         print("Houchi client V.1")
+        ##540p point value
+        preStatusxy = [
+                [380, 405,        #y1, y2
+                135, 193],        #x1, x2
+                [405, 435,
+                135, 193],
+                [435, 465,
+                135, 193],
+                [465, 495,
+                135, 193]
+        ] 
+        statusxy = [
+                [380, 405,        #y1, y2
+                348, 416],        #x1, x2
+                [405, 435,
+                348, 416],
+                [435, 465,
+                348, 416],
+                [465, 495,
+                348, 416]
+        ]
         
     ##ajust resolution
     for i in range(4):
@@ -245,10 +246,13 @@ def resolution_adjustment():
     kakinxy[1] = int(kakinxy[1]*res_y/default_y)
 
 def isClientV2(res_x, res_y):
+    #V1廃止のため常にtrue
+    return True
+    
     #フレームでv2判断 v1:(201,182,137)くらい、v2:(49,38,29)くらい
     subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
     img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-    if img[clv2xy[1]][clv2xy[0]][2]*res_y/1920 > 100 and img[clv2xy[1]][clv2xy[0]][1]*res_x/1080 > 100 :
+    if img[int(clv2xy[1]*res_y/1920)][int(clv2xy[0]*res_x/1080)][2] > 100 and img[int(clv2xy[1]*res_y/1920)][int(clv2xy[0]*res_x/1080)][1] > 100 :
         return False #v1
     else:
         return True #v2

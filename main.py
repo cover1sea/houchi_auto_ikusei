@@ -7,11 +7,11 @@ import subprocess
 import signal
 import random
 import csv
-import cv2
+#import cv2
 import pyocr
 import pyocr.builders
-from PIL import Image
-
+from PIL import Image, ImageChops
+import numpy as np
 
 #nox_adbのディレクトリ *不要なのでコメントアウト
 #nox_dir = r"F:\\Nox\bin"
@@ -38,16 +38,20 @@ SEC_RETRY_OCR_INTERVAL = 2.5
 SEC_WAIT_SIGINT = 2
 SEC_WAIT_KAKIN = 0.5 #+SEC_WAIT_TAP
 
+calc_threshold=0 #育成計算値チェック
+
+res_x=0
+res_y=0
 ##540p point value
 preStatusxy = [
     [388, 410,        #y1, y2
-    140, 200],        #x1, x2
+    141, 200],        #x1, x2
     [419, 440,
-    140, 200],
+    141, 200],
     [448, 470,
-    140, 200],
+    141, 200],
     [478, 502,
-    140, 200]
+    141, 200]
 ] 
 statusxy = [
     [388, 410,        #y1, y2
@@ -67,12 +71,14 @@ clv2xy = [400, 1685]
 tapxy=[
         [200, 700],     #c級/cancel
         [380, 680],     #b級/accept
-        [496, 41]       #課金ポップアップ×
+        [496, 41],       #課金ポップアップ×
+        [200, 800]      #a級
 ]
 
 TAP_C     = 0
 TAP_B     = 1
 TAP_KAKIN = 2
+TAP_A     = 3
 
 param_zero = list()
 
@@ -85,6 +91,7 @@ def main(args):
 def init(args):
     global dev_addr
     global data_log_path
+    global calc_threshold
     now = datetime.datetime.now()
     data_log_path = data_log_path + "\\log_" + args[1] + now.strftime('_%Y%m%d_%H%M%S') + '.csv'
 
@@ -103,11 +110,11 @@ def init(args):
         print(ss_dir)
         exit()
     resolution_adjustment()
-    getStatus()
+    img = getStatus()
     for i in range(4):
         param_zero.append(
             tool.image_to_string(
-                Image.open(pre_ss+str(i)+".png"),
+                img.crop(([preStatusxy[i][2], preStatusxy[i][0], preStatusxy[i][3], preStatusxy[i][1]])),
                 lang="eng",
                 builder=builder
             ).replace(".", "")
@@ -115,6 +122,12 @@ def init(args):
     calcStatus.preParam = list()
     for i in range(4):
         calcStatus.preParam.append(param_zero[i])
+    if args[1] == 'c':
+        calc_threshold = 15
+    elif args[1] == 'b':
+        calc_threshold = 18
+    else:
+        calc_threshold = 26
 
 def sigint_handler(signal, frame):
     print("---script terminated by SIGINT---")
@@ -135,24 +148,27 @@ def exec_ikusei(args):
 
         if args[1] == 'c':
                 tap(TAP_C)
-        else:
+        elif args[1] == 'b':
                 tap(TAP_B)
-        
+        elif args[1] == 'a':
+                tap(TAP_A)
+        else:
+            print("err: 1つ目の引数が不正です")
+            print(args)
+            exit()
         calcStatus.ocr_failure_cnt = 0
-        getStatus()
-
         calcStatus(float(args[2]),float(args[3]),float(args[4]),float(args[5]))
         print("-----\n")
 
     print("---script end---")
 
 def show_result():
-    getStatus()
+    img = getStatus()
     param_end = list()
     for i in range(4):
         param_end.append(
             tool.image_to_string(
-                Image.open(pre_ss+str(i)+".png"),
+                img.crop(([preStatusxy[i][2], preStatusxy[i][0], preStatusxy[i][3], preStatusxy[i][1]])),
                 lang="eng",
                 builder=builder
             ).replace(".", "")
@@ -165,7 +181,7 @@ def show_result():
                                                                 int(param_end[3]) - int(param_zero[3])))
 
 def resolution_adjustment():
-    global preStatusxy, statusxy
+    global preStatusxy, statusxy, res_x, res_y
     default_x = 540
     default_y = 960
     res = subprocess.run("nox_adb -s %s shell wm size" %(dev_addr), shell=True, stdout=subprocess.PIPE)
@@ -239,7 +255,7 @@ def resolution_adjustment():
         statusxy[i][1] = int(statusxy[i][1]*res_y/default_y)
         statusxy[i][2] = int(statusxy[i][2]*res_x/default_x)
         statusxy[i][3] = int(statusxy[i][3]*res_x/default_x)
-    for i in range(3):
+    for i in range(4):
         tapxy[i][0] = int(tapxy[i][0]*res_x/default_x)
         tapxy[i][1] = int(tapxy[i][1]*res_y/default_y)
     kakinxy[0] = int(kakinxy[0]*res_x/default_x)
@@ -263,45 +279,37 @@ def tap(n):
     time.sleep(SEC_WAIT_TAP)
 
 def getStatus():
-    subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
-    img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+    #subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
+    #img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+    img = ImageSS_PIL()
 
+    """育成中にポップアップ出なくなったようなのでいったんコメントアウト
     while isPopedKakinScreen(img):
-        print("info: 課金ポップアウト検出")
+        print("info: 課金ポップアップ検出")
         tap(TAP_KAKIN)
         time.sleep(SEC_WAIT_KAKIN)
-        subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
-        img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-
-    ret, img_gray = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 160, 255, cv2.THRESH_BINARY)
-    #ret, img_gray = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
-    for i in range(4):
-        cv2.imwrite(pre_ss+str(i)+".png", 
-                    img_gray[preStatusxy[i][0]:preStatusxy[i][1], preStatusxy[i][2]:preStatusxy[i][3]])
-        cv2.imwrite(ss+str(i)+".png", 
-                    img_gray[statusxy[i][0]:statusxy[i][1], statusxy[i][2]:statusxy[i][3]])
-
-    time.sleep(SEC_WAIT_GET_STATUS)
+        #subprocess.call("nox_adb -s %s exec-out screencap -p > screen_1.png" % (dev_addr), shell=True, cwd=ss_dir)
+        #img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
+        img = ImageSS()
+    """
+    
+    #time.sleep(SEC_WAIT_GET_STATUS)
+    img_gray = img.convert("L")
+    img_bin = img_gray.point(lambda _: 1 if _ > 180 else 0, mode="1")
+    return img_bin
 
 def isPopedKakinScreen(img):
     return img[kakinxy[1]][kakinxy[0]][0] == 255 and img[kakinxy[1]][kakinxy[0]][1] == 255 and img[kakinxy[1]][kakinxy[0]][2] == 255
 
 def calcStatus(a,b,c,d):
+    global calc_threshold
     rnd_width = 1.1 #画像の横幅拡大倍率、認識改善用
+    img = getStatus()
     while(1):
         param = list()
         for i in range(4):
-            """
-
-            param.append(
-                tool.image_to_string(
-                Image.open(ss+str(i)+".png"),
-                lang="eng",
-                builder=builder
-                ).replace(".", "")
-            )
-            """
-            img_d = Image.open(ss+str(i)+".png")
+ 
+            img_d = img.crop(([statusxy[i][2], statusxy[i][0], statusxy[i][3], statusxy[i][1]]))
             img_resiz = img_d.resize((int(img_d.width * rnd_width), img_d.height))
             param.append(
                         tool.image_to_string(
@@ -319,12 +327,29 @@ def calcStatus(a,b,c,d):
                         + (float(param[2]) - float(calcStatus.preParam[2])) * c \
                         + (float(param[3]) - float(calcStatus.preParam[3])) * d
         except ValueError:
-            print("warn: 育成ステータスが読み込めません")
-            img = cv2.imread(r"%s\screen_1.png" %(ss_dir))
-            img_bgr = img[tapxy[0][1], tapxy[0][0], 2]
+            calcStatus.ocr_failure_cnt += 1
+            if calcStatus.ocr_failure_cnt > MAX_OCR_RETRY:
+                print("warn: OCRリトライ回数超過、ステータスリセットのため育成確定します")
+                tap(TAP_B)
+                break
+            print("warn: 育成ステータスが読み込めません...%d"  %(calcStatus.ocr_failure_cnt))
+            print(param + calcStatus.preParam)
+            img = ImageSS_PIL()
+            img_rgb = np.array(img)[tapxy[0][1],tapxy[0][0], 0]
             time.sleep(SEC_RETRY_GET_STATUS_INTERVAL)
-            if img_bgr > 150:
-                getStatus()
+            if img_rgb > 150:
+                img = getStatus()
+                calcStatus.preParam = list()
+                for i in range(4):
+                    img_d = img.crop(([preStatusxy[i][2], preStatusxy[i][0], preStatusxy[i][3], preStatusxy[i][1]]))
+                    img_resiz = img_d.resize((int(img_d.width * rnd_width), img_d.height))
+                    calcStatus.preParam.append(
+                        tool.image_to_string(
+                            img_resiz,
+                            lang="eng",
+                            builder=builder
+                        ).replace(".", "")
+                    )
                 continue
             else:
                 return
@@ -338,7 +363,7 @@ def calcStatus(a,b,c,d):
         #誤認識用
         flg_ocr_failure = 0
         for i in range(4):
-            if abs(int(param[i]) - int(calcStatus.preParam[i])) > 20: #C級、B級の育成変動値は20を超えない
+            if abs(int(param[i]) - int(calcStatus.preParam[i])) > calc_threshold: #育成変動値はcalc_thresholdを超えない
                 calcStatus.ocr_failure_cnt += 1
                 if calcStatus.ocr_failure_cnt > MAX_OCR_RETRY:
                     print("warn: OCRリトライ回数超過、ステータスリセットのため育成確定します")
@@ -348,11 +373,11 @@ def calcStatus(a,b,c,d):
                     print("warn: OCR誤認識検知、ステータスを再読み込みします...%d" %(calcStatus.ocr_failure_cnt))
                     time.sleep(SEC_RETRY_OCR_INTERVAL)
                     flg_ocr_failure = 1
-                getStatus()
+                img = getStatus()
                 calcStatus.preParam = list()
                 rnd_width = random.uniform(1,1.3)
                 for i in range(4):
-                    img_d = Image.open(pre_ss+str(i)+".png")
+                    img_d = img.crop(([preStatusxy[i][2], preStatusxy[i][0], preStatusxy[i][3], preStatusxy[i][1]]))
                     img_resiz = img_d.resize((int(img_d.width * rnd_width), img_d.height))
                     calcStatus.preParam.append(
                         tool.image_to_string(
@@ -385,6 +410,11 @@ def calcStatus(a,b,c,d):
             writer = csv.writer(f)
             writer.writerow(["",calcStatus.preParam[0],calcStatus.preParam[1],calcStatus.preParam[2],calcStatus.preParam[3], str_yn])
         break
+
+def ImageSS_PIL():
+    pipe = subprocess.Popen("nox_adb -s %s exec-out screencap " % (dev_addr), stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+    image_bytes = pipe.stdout.read()
+    return Image.frombuffer("RGBA", (res_x, res_y), image_bytes, "raw", "RGBA", 0, 1)
 
 if __name__ == '__main__':    
     main(sys.argv)
